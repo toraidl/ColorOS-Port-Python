@@ -1,20 +1,4 @@
 {
-    "partition_to_port": [
-        "system",
-        "system_ext",
-        "product",
-        "my_product",
-        "my_manifest"
-    ],
-    "possible_super_list": [
-        "system",
-        "system_ext",
-        "product",
-        "vendor",
-        "odm",
-        "my_product",
-        "my_manifest"
-    ],
     "enable_ksu": true,
     "ksu_type": "nongki",
     "disable_vbmeta": true,
