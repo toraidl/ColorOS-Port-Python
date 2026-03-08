@@ -19,7 +19,7 @@ class SmaliHandler(BaseHandler):
     """
     Handler for Smali byte-code modifications.
     
-    Configuration format in features.json:
+    Configuration format in features.yml:
     "smali_patches": [
         {
             "apk_name": "framework-res",

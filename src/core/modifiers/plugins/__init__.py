@@ -19,10 +19,10 @@ from src.core.config_merger import ConfigMerger
 
 
 class FileReplacementPlugin(ModifierPlugin):
-    """Plugin to handle file/directory replacements from replacements.json."""
+    """Plugin to handle file/directory replacements from replacements.yml."""
 
     name = "file_replacement"
-    description = "Execute file/directory replacements from replacements.json"
+    description = "Execute file/directory replacements from replacements.yml"
     priority = 10
 
     def __init__(self, context, **kwargs):
@@ -32,7 +32,7 @@ class FileReplacementPlugin(ModifierPlugin):
 
     def modify(self) -> bool:
         """Execute file replacements."""
-        config = self._load_merged_config("replacements.json")
+        config = self._load_merged_config("replacements.yml")
         replacements = config.get("replacements", [])
 
         if not replacements:
@@ -346,10 +346,10 @@ class FileReplacementPlugin(ModifierPlugin):
 
 
 class ZipOverridePlugin(ModifierPlugin):
-    """Plugin to handle ZIP overrides and file removals from replacements.json."""
+    """Plugin to handle ZIP overrides and file removals from replacements.yml."""
 
     name = "zip_override"
-    description = "Apply ZIP overrides and file removals based on replacements.json"
+    description = "Apply ZIP overrides and file removals based on replacements.yml"
     priority = 15
     dependencies = ["file_replacement"]
 
@@ -360,7 +360,7 @@ class ZipOverridePlugin(ModifierPlugin):
 
     def modify(self) -> bool:
         """Apply ZIP overrides and file removals."""
-        config = self._load_merged_config("replacements.json")
+        config = self._load_merged_config("replacements.yml")
         if not config:
             return True
 
@@ -944,7 +944,7 @@ class FeatureHandlerPlugin(ModifierPlugin):
     """Plugin to apply features using the handler-based architecture."""
 
     name = "feature_handler"
-    description = "Apply XML features and build properties from features.json"
+    description = "Apply XML features and build properties from features.yml"
     priority = 30
     dependencies = ["permission_migration"]
 
@@ -953,7 +953,7 @@ class FeatureHandlerPlugin(ModifierPlugin):
         self.logger.info("Applying features using handler architecture...")
 
         # Load features config
-        config = self._load_merged_config("features.json")
+        config = self._load_merged_config("features.yml")
         if not config:
             self.logger.info("No features config found, skipping.")
             return True

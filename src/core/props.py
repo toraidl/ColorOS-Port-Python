@@ -3,7 +3,7 @@ Property modification module - Configuration-driven build.prop modifications.
 Uses strategy pattern for extensible and testable prop modifications.
 """
 
-import json
+import yaml
 import shutil
 import logging
 from pathlib import Path
@@ -19,11 +19,11 @@ class PropertyModifier:
     """
     Configuration-driven property modifier.
     
-    Loads modification rules from JSON config and applies them using
+    Loads modification rules from YAML config and applies them using
     pluggable strategies.
     """
     
-    DEFAULT_CONFIG_PATH = Path("devices/common/props.json")
+    DEFAULT_CONFIG_PATH = Path("devices/common/props.yml")
     
     def __init__(self, context: Context, config_path: Optional[Path] = None):
         self.ctx = context
@@ -61,18 +61,27 @@ class PropertyModifier:
         logger.info("Property modifications complete.")
     
     def _load_config(self) -> bool:
-        """Load configuration from JSON file."""
+        """Load configuration from YAML file."""
         if not self.config_path.exists():
-            logger.warning(f"Config file not found: {self.config_path}")
-            return False
+            # Try .json if .yml not found (legacy support during migration)
+            legacy_path = self.config_path.with_suffix(".json")
+            if legacy_path.exists():
+                self.config_path = legacy_path
+            else:
+                logger.warning(f"Config file not found: {self.config_path}")
+                return False
         
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
-                self._config = json.load(f)
+                if self.config_path.suffix == ".json":
+                    import json
+                    self._config = json.load(f)
+                else:
+                    self._config = yaml.safe_load(f)
             logger.debug(f"Loaded config from {self.config_path}")
             return True
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in config: {e}")
+        except yaml.YAMLError as e:
+            logger.error(f"Invalid YAML in config: {e}")
             return False
         except Exception as e:
             logger.error(f"Failed to load config: {e}")

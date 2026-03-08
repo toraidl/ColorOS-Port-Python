@@ -27,7 +27,7 @@ class BaseHandler(ABC):
         Check if this handler can process the given configuration.
 
         Args:
-            config: Configuration dictionary from features.json
+            config: Configuration dictionary from features.yml
 
         Returns:
             True if this handler can process the config, False otherwise
