@@ -111,11 +111,13 @@ class PortingWorkflow:
 
         self.repack_images_dir.mkdir(parents=True, exist_ok=True)
 
-        if baserom.rom_type.name == "PAYLOAD":
-            copied_count = self.copy_firmware_images(baserom, self.repack_images_dir)
+        # Always try to copy firmware images from baserom to repack_images
+        # as they might be needed for patching (e.g. vbmeta)
+        copied_count = self.copy_firmware_images(baserom, self.repack_images_dir)
+        if copied_count > 0:
             logger.info(f"Copied {copied_count} firmware images to repack_images")
         else:
-            logger.info("Skipping firmware copy for non-PAYLOAD format")
+            logger.info("No firmware images copied to repack_images")
 
         portrom.extract_images(config.partition_to_port)
         self.extract_partitions(baserom, config.baserom_partitions)
