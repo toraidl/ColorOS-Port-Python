@@ -16,6 +16,7 @@ from src.utils.logging_config import setup_logging
 from src.utils.file_utils import clean_work_dir
 from src.utils.progress import timed_stage, get_timer, reset_timer
 from src.utils.perf_monitor import get_monitor, reset_monitor
+from src.utils.space_manager import SpaceManager
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,11 @@ def parse_args():
         help="Output format: super (Fastboot) or payload (OTA). Default: payload",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--keep_extracted",
+        action="store_true",
+        help="Keep extracted directories for debugging (uses more disk space)",
+    )
     return parser.parse_args()
 
 
@@ -74,6 +80,13 @@ def main():
                 logger.error(f"Failed to extract ROMs: {e}")
                 sys.exit(1)
 
+            logger.info("Optimizing disk space after extraction...")
+            space_mgr = SpaceManager(work_dir)
+            freed = space_mgr.cleanup_after_extraction("both")
+            if freed > 0:
+                logger.info(f"Freed {freed / (1024**3):.2f}GB by cleaning up images")
+            space_mgr.get_space_report()
+
         with timed_stage("Device Detection & Context Setup"):
             device_code, config = workflow.refine_device_detection(
                 baserom, device_code, config
@@ -110,6 +123,21 @@ def main():
             logger.info("Starting Stage 3.6: Feature Modules...")
             workflow.run_modules(ctx)
 
+        logger.info("Preparing for final packing...")
+        space_mgr = SpaceManager(work_dir)
+
+        logger.info("Generating file manifests for debugging...")
+        space_mgr.generate_manifests()
+
+        freed = space_mgr.cleanup_after_install(
+            keep_baserom=args.keep_extracted, keep_portrom=args.keep_extracted
+        )
+        if freed > 0:
+            logger.info(
+                f"Freed {freed / (1024**3):.2f}GB by cleaning up extracted directories"
+            )
+        space_mgr.get_space_report()
+
         with timed_stage("Stage 4: Repacking"):
             logger.info("Starting Stage 4: Repacking...")
             packer = Repacker(ctx)
@@ -123,6 +151,11 @@ def main():
                 packer.pack_all(pack_type="EROFS", is_rw=False)
                 packer.pack_ota_package()
                 logger.info("OTA package packing complete.")
+
+            logger.info("Generating modification diff report...")
+            space_mgr = SpaceManager(work_dir)
+            report_path = space_mgr.generate_diff_report()
+            logger.info(f"Diff report saved to: {report_path}")
 
         logger.info("Porting process (Stage 1-4) complete.")
 
