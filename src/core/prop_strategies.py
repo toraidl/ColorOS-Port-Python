@@ -21,6 +21,7 @@ from src.core.prop_utils import (
     update_or_append_prop,
     read_prop_value,
     batch_update_props,
+    read_prop_to_dict,
 )
 
 logger = logging.getLogger(__name__)
