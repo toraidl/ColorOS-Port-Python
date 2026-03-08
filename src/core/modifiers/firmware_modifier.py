@@ -122,9 +122,13 @@ class FirmwareModifier(BaseModifier):
             )
             return
 
-        # Find kernel zip (KSU or NoKSU)
+        # Find kernel zip (KSU or NoKSU) - look in device_dir and its assets/ subdirectory
         ksu_zips = list(device_dir.glob("*-KSU*.zip"))
         noksu_zips = list(device_dir.glob("*-NoKSU*.zip"))
+
+        if not ksu_zips and not noksu_zips:
+            ksu_zips = list((device_dir / "assets").glob("*-KSU*.zip"))
+            noksu_zips = list((device_dir / "assets").glob("*-NoKSU*.zip"))
 
         target_zip = None
         if ksu_zips:
@@ -138,25 +142,11 @@ class FirmwareModifier(BaseModifier):
             self.logger.warning("No custom kernel zip found in device directory.")
             return
 
-        # Determine boot.img location based on device type (AB vs A-only)
-        if self.ctx.is_ab_device:
-            target_boot = self.ctx.repack_images_dir / "boot.img"
-            if not target_boot.exists():
-                self.logger.error(f"boot.img not found in {self.ctx.repack_images_dir}")
-                return
-        else:
-            # A-only device: use boot.img from baserom images
-            target_boot = self.ctx.baserom.images_dir / "boot.img"
-            if not target_boot.exists():
-                self.logger.error(
-                    f"boot.img not found in baserom images: {target_boot}"
-                )
-                return
-            # Copy to repack_images for processing
-            self.ctx.repack_images_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(target_boot, self.ctx.repack_images_dir / "boot.img")
-            target_boot = self.ctx.repack_images_dir / "boot.img"
-            self.logger.info(f"Copied A-only boot.img to repack_images for processing")
+        # Find boot.img in repack_images_dir (it should have been copied there by workflow.py)
+        target_boot = self.ctx.repack_images_dir / "boot.img"
+        if not target_boot.exists():
+            self.logger.error(f"boot.img not found in {self.ctx.repack_images_dir}")
+            return
 
         with tempfile.TemporaryDirectory(prefix="anykernel_") as tmp:
             tmp_path = Path(tmp)
