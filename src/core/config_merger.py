@@ -3,7 +3,7 @@ Configuration merger with enhanced strategies.
 Supports append, override, remove strategies and dependency resolution.
 """
 
-import json
+import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field
@@ -32,7 +32,7 @@ class MergeReport:
         }
     
     def __str__(self) -> str:
-        return json.dumps(self.to_dict(), indent=2)
+        return yaml.dump(self.to_dict(), sort_keys=False, indent=2)
 
 
 class ConfigMergeError(Exception):
@@ -156,9 +156,6 @@ class ConfigMerger:
                     result.append(item)
             return result
         
-        elif isinstance(base, dict) and isinstance(extra, dict):
-            return self.merge(base, extra, path)
-        
         # For primitives, extra overrides base
         return extra
     
@@ -243,30 +240,33 @@ class ConfigMerger:
         config = {}
         
         for p in paths:
-            if p.exists():
+            # Try both .json and .yml but prefer .yml
+            yaml_path = p.with_suffix(".yml") if p.suffix == ".json" else p
+            
+            if yaml_path.exists():
                 try:
-                    with open(p, 'r') as f:
-                        data = json.load(f)
+                    with open(yaml_path, 'r', encoding='utf-8') as f:
+                        data = yaml.safe_load(f)
                     
-                    self.report.loaded_files.append(str(p))
+                    self.report.loaded_files.append(str(yaml_path))
                     
                     if not config:
-                        config = data
+                        config = data or {}
                     else:
-                        config = self.merge(config, data, str(p))
+                        config = self.merge(config, data or {}, str(yaml_path))
                     
-                    self._log("info", f"Loaded and merged config from {p}")
-                except json.JSONDecodeError as e:
-                    error_msg = f"Invalid JSON in {p}: {e}"
+                    self._log("info", f"Loaded and merged config from {yaml_path}")
+                except yaml.YAMLError as e:
+                    error_msg = f"Invalid YAML in {yaml_path}: {e}"
                     self.report.errors.append(error_msg)
                     self._log("error", error_msg)
                 except Exception as e:
-                    error_msg = f"Failed to load config {p}: {e}"
+                    error_msg = f"Failed to load config {yaml_path}: {e}"
                     self.report.errors.append(error_msg)
                     self._log("error", error_msg)
             else:
-                self.report.missing_files.append(str(p))
-                self._log("debug", f"Config file not found: {p} (this may be expected)")
+                self.report.missing_files.append(str(yaml_path))
+                self._log("debug", f"Config file not found: {yaml_path} (this may be expected)")
         
         # Extract merged keys
         if config:

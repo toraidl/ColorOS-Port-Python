@@ -1,4 +1,4 @@
-import json
+import yaml
 import logging
 import sys
 from pathlib import Path
@@ -32,23 +32,23 @@ class Config:
 
     @classmethod
     def load(cls, device_code=None):
-        base_config_path = Path("devices/common/port_config.json")
+        base_config_path = Path("devices/common/port_config.yml")
         if not base_config_path.exists():
             raise FileNotFoundError(
-                "Base configuration not found in devices/common/port_config.json"
+                "Base configuration not found in devices/common/port_config.yml"
             )
 
-        with open(base_config_path, "r") as f:
-            config_data = json.load(f)
+        with open(base_config_path, "r", encoding="utf-8") as f:
+            config_data = yaml.safe_load(f)
 
         if device_code:
-            device_config_path = Path(f"devices/target/{device_code}/port_config.json")
+            device_config_path = Path(f"devices/target/{device_code}/port_config.yml")
             if not device_config_path.exists():
-                device_config_path = Path(f"devices/{device_code}/port_config.json")
+                device_config_path = Path(f"devices/{device_code}/port_config.yml")
 
             if device_config_path.exists():
-                with open(device_config_path, "r") as f:
-                    device_data = json.load(f)
+                with open(device_config_path, "r", encoding="utf-8") as f:
+                    device_data = yaml.safe_load(f)
                     config_data.update(device_data)
 
         return cls(config_data)

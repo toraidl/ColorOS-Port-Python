@@ -2,13 +2,13 @@
 简化版配置验证模块
 """
 
-import json
+import yaml
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
 
 
 def validate_replacements(data: Dict) -> List[str]:
-    """验证 replacements.json"""
+    """验证 replacements.yml"""
     errors = []
     if "replacements" not in data:
         errors.append("Missing required field 'replacements'")
@@ -23,7 +23,7 @@ def validate_replacements(data: Dict) -> List[str]:
 
 
 def validate_features(data: Dict) -> List[str]:
-    """验证 features.json"""
+    """验证 features.yml"""
     errors = []
     valid_keys = {
         "oplus_feature",
@@ -45,7 +45,7 @@ def validate_features(data: Dict) -> List[str]:
 
 
 def validate_props(data: Dict) -> List[str]:
-    """验证 props.json"""
+    """验证 props.yml"""
     errors = []
 
     # Check version
@@ -120,7 +120,7 @@ def validate_props(data: Dict) -> List[str]:
 
 
 def validate_port_config(data: Dict) -> List[str]:
-    """验证 port_config.json"""
+    """验证 port_config.yml"""
     errors = []
     required = ["partition_to_port", "possible_super_list"]
     for field in required:
@@ -136,21 +136,25 @@ def validate_config(config_path: str) -> Tuple[bool, List[str]]:
         return False, [f"File not found: {config_path}"]
 
     try:
-        with open(path, "r") as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        return False, [f"Invalid JSON: {e}"]
+        with open(path, "r", encoding='utf-8') as f:
+            if path.suffix == '.json':
+                import json
+                data = json.load(f)
+            else:
+                data = yaml.safe_load(f)
+    except Exception as e:
+        return False, [f"Invalid config format: {e}"]
 
     filename = path.name
     errors = []
 
-    if filename == "replacements.json":
+    if filename in ["replacements.yml", "replacements.yml"]:
         errors = validate_replacements(data)
-    elif filename == "features.json":
+    elif filename in ["features.yml", "features.yml"]:
         errors = validate_features(data)
-    elif filename == "port_config.json":
+    elif filename in ["port_config.yml", "port_config.yml"]:
         errors = validate_port_config(data)
-    elif filename == "props.json":
+    elif filename in ["props.yml", "props.yml"]:
         errors = validate_props(data)
     else:
         return True, []
@@ -165,12 +169,18 @@ def validate_all_configs(
     results = {}
     base = Path(base_dir)
 
-    for pattern in [
-        "**/replacements.json",
-        "**/features.json",
-        "**/port_config.json",
-        "**/props.json",
-    ]:
+    patterns = [
+        "**/replacements.yml",
+        "**/features.yml",
+        "**/port_config.yml",
+        "**/props.yml",
+        "**/replacements.yml",
+        "**/features.yml",
+        "**/port_config.yml",
+        "**/props.yml",
+    ]
+    
+    for pattern in patterns:
         for config_file in base.glob(pattern):
             is_valid, errors = validate_config(str(config_file))
             results[str(config_file)] = (is_valid, errors)
