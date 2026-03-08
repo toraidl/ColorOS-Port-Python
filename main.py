@@ -49,10 +49,10 @@ def main():
     args = parse_args()
     work_dir = Path(args.work_dir).resolve()
 
-    setup_logging(work_dir, args.debug)
-
     if args.clean:
         clean_work_dir(work_dir)
+
+    setup_logging(work_dir, args.debug)
 
     reset_timer()
     timer = get_timer()
