@@ -111,7 +111,7 @@ ColorOS 16 需要特定的内核支持。如果尝试移植 ColorOS 16，请确�
 2.  **芯片组层 (`devices/chipset/<FAMILY>/`)**: 特定于芯片组的修改。
 3.  **目标层 (`devices/target/<DEVICE>/`)**: 特定于设备的硬件补丁。
 
-> 更多示例，如 `features.json` 和 `replacements.json`，请参阅 `devices` 目录。
+> 更多示例，如 `features.yml` 和 `replacements.yml`，请参阅 `devices` 目录。
 
 ---
 
@@ -148,13 +148,13 @@ ColorOS 16 需要特定的内核支持。如果尝试移植 ColorOS 16，请确�
 所有配置文件都会根据定义的 schema 自动验证，及早发现错误。
 
 **支持的配置文件:**
-- `replacements.json` - 文件替换规则
-- `features.json` - 功能标志和构建属性
-- `port_config.json` - 移植配置设置
+- `replacements.yml` - 文件替换规则
+- `features.yml` - 功能标志和构建属性
+- `port_config.yml` - 移植配置设置
 
 **验证错误示例:**
 ```
-✗ devices/target/DEVICE/replacements.json
+✗ devices/target/DEVICE/replacements.yml
   - [1:5] 缺少必需字段 'type'
   - [3:10] 未知字段 'condtion' (你是不是想说 'condition'?)
 ```
@@ -376,8 +376,8 @@ print(f'条件通过：{evaluator.evaluate(rule, ctx)}')
 #### 合并报告
 框架在配置加载期间生成详细报告：
 ```
-[INFO] Config 'replacements.json' loaded from 3 layer(s)
-[DEBUG] Config 'replacements.json' missing (expected): 0 file(s)
+[INFO] Config 'replacements.yml' loaded from 3 layer(s)
+[DEBUG] Config 'replacements.yml' missing (expected): 0 file(s)
 [INFO] Applied 12 override rules, skipped 5
 ```
 
@@ -385,7 +385,7 @@ print(f'条件通过：{evaluator.evaluate(rule, ctx)}')
 
 ## 🔧 配置驱动的属性修改
 
-属性修改系统 (`PropertyModifier`) 使用配置驱动的架构和可插拔策略。你可以在 `devices/common/props.json` 中定义规则，而不是在 Python 代码中硬编码修改逻辑。
+属性修改系统 (`PropertyModifier`) 使用配置驱动的架构和可插拔策略。你可以在 `devices/common/props.yml` 中定义规则，而不是在 Python 代码中硬编码修改逻辑。
 
 ### 架构概览
 
@@ -393,7 +393,7 @@ print(f'条件通过：{evaluator.evaluate(rule, ctx)}')
 ┌─────────────────────────────────────────────────────────────┐
 │                    属性修改系统                               │
 ├─────────────────────────────────────────────────────────────┤
-│  配置文件 (props.json)                                        │
+│  配置文件 (props.yml)                                        │
 │       ↓                                                       │
 │  策略注册表                                                    │
 │       ↓                                                       │
@@ -516,7 +516,7 @@ class MyCustomStrategy(PropStrategy):
 STRATEGY_REGISTRY["my_custom"] = MyCustomStrategy
 ```
 
-然后在 `props.json` 中使用它：
+然后在 `props.yml` 中使用它：
 
 ```json
 {
@@ -536,11 +536,11 @@ STRATEGY_REGISTRY["my_custom"] = MyCustomStrategy
 
 ### 分层配置
 
-与其他配置文件一样，`props.json` 遵循三层继承：
+与其他配置文件一样，`props.yml` 遵循三层继承：
 
-1. **通用层** (`devices/common/props.json`): 所有设备的默认策略
-2. **芯片组层** (`devices/chipset/<FAMILY>/props.json`): 芯片组特定覆盖
-3. **目标层** (`devices/target/<DEVICE>/props.json`): 设备特定覆盖
+1. **通用层** (`devices/common/props.yml`): 所有设备的默认策略
+2. **芯片组层** (`devices/chipset/<FAMILY>/props.yml`): 芯片组特定覆盖
+3. **目标层** (`devices/target/<DEVICE>/props.yml`): 设备特定覆盖
 
 设备特定覆盖示例：
 

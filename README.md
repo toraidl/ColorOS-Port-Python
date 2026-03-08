@@ -118,7 +118,7 @@ The project uses a powerful three-layer inheritance system for ROM modifications
 2.  **Chipset Layer (`devices/chipset/<FAMILY>/`)**: Chipset-specific modifications.
 3.  **Target Layer (`devices/target/<DEVICE>/`)**: Device-specific hardware patches.
 
-> See the `devices` directory for examples like `features.json` and `replacements.json`.
+> See the `devices` directory for examples like `features.yml` and `replacements.yml`.
 
 ---
 
@@ -155,13 +155,13 @@ The new framework provides powerful features for defining device-specific modifi
 All configuration files are automatically validated against defined schemas to catch errors early.
 
 **Supported Config Files:**
-- `replacements.json` - File replacement rules
-- `features.json` - Feature flags and build properties
-- `port_config.json` - Port configuration settings
+- `replacements.yml` - File replacement rules
+- `features.yml` - Feature flags and build properties
+- `port_config.yml` - Port configuration settings
 
 **Example Validation Error:**
 ```
-✗ devices/target/DEVICE/replacements.json
+✗ devices/target/DEVICE/replacements.yml
   - [1:5] Missing required field 'type'
   - [3:10] Unknown field 'condtion' (did you mean 'condition'?)
 ```
@@ -383,8 +383,8 @@ print(f'Condition passes: {evaluator.evaluate(rule, ctx)}')
 #### Merge Report
 The framework generates detailed reports during config loading:
 ```
-[INFO] Config 'replacements.json' loaded from 3 layer(s)
-[DEBUG] Config 'replacements.json' missing (expected): 0 file(s)
+[INFO] Config 'replacements.yml' loaded from 3 layer(s)
+[DEBUG] Config 'replacements.yml' missing (expected): 0 file(s)
 [INFO] Applied 12 override rules, skipped 5
 ```
 
@@ -392,7 +392,7 @@ The framework generates detailed reports during config loading:
 
 ## 🔧 Configuration-Driven Property Modification
 
-The property modification system (`PropertyModifier`) uses a configuration-driven architecture with pluggable strategies. Instead of hardcoding modification logic in Python, you define rules in `devices/common/props.json`.
+The property modification system (`PropertyModifier`) uses a configuration-driven architecture with pluggable strategies. Instead of hardcoding modification logic in Python, you define rules in `devices/common/props.yml`.
 
 ### Architecture Overview
 
@@ -400,7 +400,7 @@ The property modification system (`PropertyModifier`) uses a configuration-drive
 ┌─────────────────────────────────────────────────────────────┐
 │              Property Modification System                    │
 ├─────────────────────────────────────────────────────────────┤
-│  Configuration File (props.json)                             │
+│  Configuration File (props.yml)                             │
 │       ↓                                                      │
 │  Strategy Registry                                           │
 │       ↓                                                      │
@@ -433,12 +433,12 @@ All strategies now include comprehensive error handling:
 
 ### Configuration Validation
 
-Validate your props.json configuration:
+Validate your props.yml configuration:
 
 ```bash
 python3 -c "
 from src.core.config_schema import validate_config
-valid, errors = validate_config('devices/common/props.json')
+valid, errors = validate_config('devices/common/props.yml')
 if valid:
     print('✓ Configuration is valid')
 else:
@@ -566,7 +566,7 @@ class MyCustomStrategy(PropStrategy):
 STRATEGY_REGISTRY["my_custom"] = MyCustomStrategy
 ```
 
-Then use it in `props.json`:
+Then use it in `props.yml`:
 
 ```json
 {
@@ -611,11 +611,11 @@ batch_update_props(Path("build/target/system/build.prop"), updates)
 
 ### Hierarchical Configuration
 
-Like other config files, `props.json` follows the three-layer inheritance:
+Like other config files, `props.yml` follows the three-layer inheritance:
 
-1. **Common** (`devices/common/props.json`): Default strategies for all devices
-2. **Chipset** (`devices/chipset/<FAMILY>/props.json`): Chipset-specific overrides
-3. **Target** (`devices/target/<DEVICE>/props.json`): Device-specific overrides
+1. **Common** (`devices/common/props.yml`): Default strategies for all devices
+2. **Chipset** (`devices/chipset/<FAMILY>/props.yml`): Chipset-specific overrides
+3. **Target** (`devices/target/<DEVICE>/props.yml`): Device-specific overrides
 
 Example device-specific override:
 
