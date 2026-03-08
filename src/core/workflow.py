@@ -111,8 +111,15 @@ class PortingWorkflow:
 
         self.repack_images_dir.mkdir(parents=True, exist_ok=True)
 
-        # Always try to copy firmware images from baserom to repack_images
-        # as they might be needed for patching (e.g. vbmeta)
+        if not any(baserom.images_dir.iterdir()):
+            logger.warning(
+                "Baserom images directory is empty, re-extracting for firmware..."
+            )
+            hash_file = baserom.work_dir / "source_file.hash"
+            if hash_file.exists():
+                hash_file.unlink()
+            baserom.extract_images()
+
         copied_count = self.copy_firmware_images(baserom, self.repack_images_dir)
         if copied_count > 0:
             logger.info(f"Copied {copied_count} firmware images to repack_images")
@@ -189,5 +196,7 @@ class PortingWorkflow:
 
         succeeded = sum(1 for r in results.values() if r is True)
         failed = sum(1 for r in results.values() if r is False)
-        logger.info(f"Feature Modules execution complete: {succeeded} succeeded, {failed} failed.")
+        logger.info(
+            f"Feature Modules execution complete: {succeeded} succeeded, {failed} failed."
+        )
         return results

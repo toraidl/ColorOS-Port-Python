@@ -11,6 +11,7 @@ from pathlib import Path
 from src.utils.shell import ShellRunner
 from src.utils.fspatch import patch_fs_config
 from src.utils.contextpatch import ContextPatcher
+from src.core.rom import ANDROID_LOGICAL_PARTITIONS
 from datetime import datetime
 
 
@@ -31,7 +32,9 @@ class Repacker:
         self.fix_timestamp = "1230768000"
         # Define OTA output directory structure
         self.out_dir = Path("out").resolve()
-        self.product_out = self.out_dir / "target" / "product" / self.ctx.baserom.vendor_device
+        self.product_out = (
+            self.out_dir / "target" / "product" / self.ctx.baserom.vendor_device
+        )
         self.images_out = self.product_out / "IMAGES"
         self.meta_out = self.product_out / "META"
         self.ota_tools_dir = Path("otatools").resolve()
@@ -513,7 +516,9 @@ class Repacker:
         self.logger.info("Generating hybrid flashing scripts...")
 
         # Prepare output directory
-        out_name = f"{self.ctx.baserom.vendor_device}_{self.ctx.target_rom_version}_hybrid"
+        out_name = (
+            f"{self.ctx.baserom.vendor_device}_{self.ctx.target_rom_version}_hybrid"
+        )
         out_path = self.out_dir / out_name
 
         if out_path.exists():
@@ -866,7 +871,21 @@ class Repacker:
         self.meta_out.mkdir(parents=True, exist_ok=True)
 
         # Base partitions for all OTA types
-        base_parts = ["SYSTEM", "SYSTEM_EXT", "PRODUCT", "VENDOR", "ODM", "MY_PRODUCT", "MY_MANIFEST", "MY_STOCK", "MY_REGION", "MY_CARRIER", "MY_HEYTAP", "MY_BIGBALL", "MY_ENGINEERING"]
+        base_parts = [
+            "SYSTEM",
+            "SYSTEM_EXT",
+            "PRODUCT",
+            "VENDOR",
+            "ODM",
+            "MY_PRODUCT",
+            "MY_MANIFEST",
+            "MY_STOCK",
+            "MY_REGION",
+            "MY_CARRIER",
+            "MY_HEYTAP",
+            "MY_BIGBALL",
+            "MY_ENGINEERING",
+        ]
 
         # A/B devices need additional partitions for third-party super image support
         if is_ab:
@@ -1171,9 +1190,15 @@ class Repacker:
         Get Super partition size
         Logic: Try matching both Device Code and Model
         """
-        device_code = self.ctx.baserom.vendor_device.upper() if self.ctx.baserom.vendor_device else ""
+        device_code = (
+            self.ctx.baserom.vendor_device.upper()
+            if self.ctx.baserom.vendor_device
+            else ""
+        )
         product_model = (
-            self.ctx.baserom.product_model.upper() if self.ctx.baserom.product_model else ""
+            self.ctx.baserom.product_model.upper()
+            if self.ctx.baserom.product_model
+            else ""
         )
 
         self.logger.info(
@@ -1233,7 +1258,9 @@ class Repacker:
         ota_bin = self.product_out / "OTA" / "bin"
         ota_bin.mkdir(parents=True, exist_ok=True)
 
-        updater_src = Path(f"devices/target/{self.ctx.baserom.vendor_device}/OTA/bin/updater")
+        updater_src = Path(
+            f"devices/target/{self.ctx.baserom.vendor_device}/OTA/bin/updater"
+        )
         updater_dst = ota_bin / "updater"
 
         if updater_src.exists():
@@ -1265,7 +1292,9 @@ class Repacker:
         recovery_etc = self.product_out / "RECOVERY" / "RAMDISK" / "etc"
         recovery_etc.mkdir(parents=True, exist_ok=True)
 
-        fstab_src = Path(f"devices/target/{self.ctx.baserom.vendor_device}/recovery.fstab")
+        fstab_src = Path(
+            f"devices/target/{self.ctx.baserom.vendor_device}/recovery.fstab"
+        )
         fstab_dst = recovery_etc / "recovery.fstab"
 
         if fstab_src.exists():
@@ -1277,7 +1306,9 @@ class Repacker:
                 self.logger.info("Copied default recovery.fstab")
 
         # 4. Copy releasetools.py
-        releasetools_src = Path(f"devices/target/{self.ctx.baserom.vendor_device}/releasetools.py")
+        releasetools_src = Path(
+            f"devices/target/{self.ctx.baserom.vendor_device}/releasetools.py"
+        )
         releasetools_dst = self.meta_out / "releasetools.py"
 
         if releasetools_src.exists():
@@ -1305,14 +1336,14 @@ class Repacker:
         firmware_out = self.product_out / "firmware-update"
         firmware_out.mkdir(parents=True, exist_ok=True)
 
-        # Get baserom work directory (RomPackage.work_dir)
         baserom_work_dir = (
             self.ctx.baserom.work_dir if hasattr(self.ctx, "baserom") else None
         )
+        repack_images_dir = self.ctx.work_dir / "repack_images"
 
         if baserom_work_dir and baserom_work_dir.exists():
-            # 1. Check for firmware-update directory
-            baserom_fw = baserom_work_dir / "images" / "firmware-update"
+            baserom_images = baserom_work_dir / "images"
+            baserom_fw = baserom_images / "firmware-update"
             if baserom_fw.exists() and baserom_fw.is_dir():
                 shutil.copytree(baserom_fw, firmware_out, dirs_exist_ok=True)
                 self.logger.info(f"Copied firmware-update from {baserom_fw}")
@@ -1329,28 +1360,53 @@ class Repacker:
                                 shutil.copy2(fw_file, dest)
                                 self.logger.info(f"Copied firmware: {fw_file.name}")
 
-            # 2. Copy specific images to firmware-update
-            baserom_images = baserom_work_dir / "images"
-            if baserom_images.exists():
-                for img_name in ["dtbo.img", "vbmeta.img", "vbmeta_system.img"]:
-                    src = baserom_images / img_name
+                # Copy other firmware-related .img files from baserom/images or repack_images_dir
+                search_dirs = []
+                if baserom_images.exists():
+                    search_dirs.append(baserom_images)
+                if repack_images_dir.exists():
+                    search_dirs.append(repack_images_dir)
+
+                for s_dir in search_dirs:
+                    for img_file in s_dir.glob("*.img"):
+                        part_name = img_file.stem
+                        # Skip logical partitions, boot, and those already handled explicitly
+                        if part_name not in ANDROID_LOGICAL_PARTITIONS and part_name not in ["boot", "dtbo", "vbmeta", "vbmeta_system"]:
+                            dest = firmware_out / img_file.name
+                            if not dest.exists():
+                                shutil.copy2(img_file, dest)
+                                self.logger.info(f"Copied firmware image: {img_file.name} from {s_dir.name}")
+
+            for img_name in ["dtbo.img", "vbmeta.img", "vbmeta_system.img"]:
+                src = baserom_images / img_name
+                if src.exists():
+                    shutil.copy2(src, firmware_out / img_name)
+                    self.logger.info(
+                        f"Copied {img_name} to firmware-update from baserom/images"
+                    )
+                elif repack_images_dir.exists():
+                    src = repack_images_dir / img_name
                     if src.exists():
                         shutil.copy2(src, firmware_out / img_name)
-                        self.logger.info(f"Copied {img_name} to firmware-update")
+                        self.logger.info(
+                            f"Copied {img_name} to firmware-update from repack_images"
+                        )
 
-                # Copy boot.img to IMAGES directory for A-only OTA
-                # Skip if boot.img already exists (e.g., patched by AnyKernel)
                 target_boot_img = self.images_out / "boot.img"
                 if target_boot_img.exists():
-                    self.logger.info("boot.img already exists in IMAGES (possibly patched), skipping")
+                    self.logger.info(
+                        "boot.img already exists in IMAGES (possibly patched), skipping"
+                    )
                 else:
                     boot_img = baserom_images / "boot.img"
+                    if not boot_img.exists() and repack_images_dir.exists():
+                        boot_img = repack_images_dir / "boot.img"
+
                     if boot_img.exists():
                         self.images_out.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(boot_img, target_boot_img)
                         self.logger.info("Copied boot.img to IMAGES")
 
-            # 3. Handle storage-fw and ffu_tool
             storage_fw = baserom_work_dir / "images" / "storage-fw"
             if storage_fw.exists():
                 storage_out = self.product_out / "storage-fw"
@@ -1362,7 +1418,6 @@ class Repacker:
                     shutil.copy2(ffu_tool, storage_out / "ffu_tool")
                     self.logger.info("Copied ffu_tool to storage-fw")
             else:
-                # Check if ffu_tool exists at root level
                 ffu_tool = baserom_work_dir / "images" / "ffu_tool"
                 if ffu_tool.exists():
                     storage_out = self.product_out / "storage-fw"

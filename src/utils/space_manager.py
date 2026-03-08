@@ -12,12 +12,13 @@ from pathlib import Path
 from typing import Optional, Dict, List
 import shutil
 from datetime import datetime
+from src.core.rom import ANDROID_LOGICAL_PARTITIONS
 
 logger = logging.getLogger(__name__)
 
 
 class FileManifest:
-    """文件清单，用于替代保留完整 extracted 目录"""
+    """File manifest used to replace keeping the full extracted directory"""
 
     def __init__(self, rom_label: str, work_dir: Path):
         self.rom_label = rom_label
@@ -27,13 +28,13 @@ class FileManifest:
 
     def generate(self, extracted_dir: Path) -> Path:
         """
-        从 extracted 目录生成文件清单
+        Generate file manifest from the extracted directory
 
         Args:
-            extracted_dir: 解压后的分区目录
+            extracted_dir: Extracted partition directory
 
         Returns:
-            manifest 文件路径
+            Path to the manifest file
         """
         if not extracted_dir.exists():
             logger.warning(f"[Manifest] {extracted_dir} not found, skipping")
@@ -48,7 +49,7 @@ class FileManifest:
             "summary": {"total_files": 0, "total_size": 0, "partition_count": 0},
         }
 
-        # 遍历所有分区
+        # Iterate through all partitions
         for part_dir in sorted(extracted_dir.iterdir()):
             if not part_dir.is_dir() or part_dir.name == "config":
                 continue
@@ -68,7 +69,7 @@ class FileManifest:
                 file_size = stat.st_size
                 part_size += file_size
 
-                # 对小文件计算哈希（用于精确对比）
+                # Calculate hash for small files (for precise comparison)
                 file_hash = None
                 if file_size < 10 * 1024 * 1024:  # < 10MB
                     try:
@@ -101,7 +102,7 @@ class FileManifest:
                 f"{len(files_info)} files, {self._human_readable(part_size)}"
             )
 
-        # 保存 manifest
+        # Save manifest
         with open(self.manifest_file, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2)
 
@@ -113,7 +114,7 @@ class FileManifest:
         return self.manifest_file
 
     def _compute_hash(self, file_path: Path) -> str:
-        """计算文件 MD5 哈希"""
+        """Compute file MD5 hash"""
         h = hashlib.md5()
         with open(file_path, "rb") as f:
             while chunk := f.read(8192):
@@ -121,7 +122,7 @@ class FileManifest:
         return h.hexdigest()
 
     def _human_readable(self, size: int) -> str:
-        """转换为人类可读格式"""
+        """Convert size to human-readable format"""
         for unit in ["B", "KB", "MB", "GB", "TB"]:
             if size < 1024:
                 return f"{size:.1f}{unit}"
@@ -130,7 +131,7 @@ class FileManifest:
 
 
 class DiffReporter:
-    """差异报告生成器，替代完整的 extracted 目录进行对比"""
+    """Difference reporter generator, compares using manifests instead of full extracted directories"""
 
     def __init__(self, work_dir: Path):
         self.work_dir = Path(work_dir).resolve()
@@ -139,10 +140,10 @@ class DiffReporter:
 
     def generate_report(self, output_file: Optional[Path] = None) -> Path:
         """
-        生成 target 与 baserom/portrom 的详细差异报告
+        Generate detailed difference report between target and baserom/portrom
 
         Returns:
-            报告文件路径
+            Path to the report file
         """
         if output_file is None:
             output_file = self.work_dir / "modification_report.json"
@@ -166,7 +167,7 @@ class DiffReporter:
             "modified_file_list": [],
         }
 
-        # 分析每个文件
+        # Analyze each file
         for file_info in target_files:
             rel_path = file_info["rel_path"]
             part_name = file_info["partition"]
@@ -178,7 +179,7 @@ class DiffReporter:
             source = "unknown"
 
             if baserom_file and portrom_file:
-                # 两边都有，判断来源
+                # Exists in both, determine source
                 if self._files_equal(file_info, portrom_file):
                     source = "portrom"
                     report["summary"]["files_from_portrom"] += 1
@@ -215,7 +216,7 @@ class DiffReporter:
                 source = "new"
                 report["summary"]["new_files"] += 1
 
-            # 按分区统计
+            # Statistics by partition
             if part_name not in report["partitions"]:
                 report["partitions"][part_name] = {
                     "total_files": 0,
@@ -239,7 +240,7 @@ class DiffReporter:
                 report["partitions"][part_name]["unknown"] += 1
                 report["summary"]["unknown_source"] += 1
 
-        # 保存报告
+        # Save report
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
 
@@ -251,7 +252,7 @@ class DiffReporter:
 
         if report["large_changes"]:
             logger.info(f"  Large file changes (>10MB): {len(report['large_changes'])}")
-            for change in report["large_changes"][:5]:  # 只显示前5个
+            for change in report["large_changes"][:5]:  # Show only the first 5
                 logger.info(
                     f"    - {change['path']}: {self._human_readable(change['size'])}"
                 )
@@ -259,7 +260,7 @@ class DiffReporter:
         return output_file
 
     def _load_manifest(self, rom_label: str) -> Optional[Dict]:
-        """加载 manifest 文件"""
+        """Load manifest file"""
         manifest_file = self.manifest_dir / f"{rom_label}_manifest.json"
         if not manifest_file.exists():
             return None
@@ -271,7 +272,7 @@ class DiffReporter:
             return None
 
     def _scan_target_files(self) -> List[Dict]:
-        """扫描 target 目录的所有文件"""
+        """Scan all files in the target directory"""
         files = []
         if not self.target_dir.exists():
             return files
@@ -297,7 +298,7 @@ class DiffReporter:
     def _find_in_manifest(
         self, manifest: Dict, partition: str, rel_path: str
     ) -> Optional[Dict]:
-        """在 manifest 中查找文件"""
+        """Find file in the manifest"""
         if not manifest:
             return None
 
@@ -308,15 +309,15 @@ class DiffReporter:
         return None
 
     def _files_equal(self, file1: Dict, file2: Dict) -> bool:
-        """比较两个文件是否相同"""
-        # 优先使用哈希
+        """Compare if two files are identical"""
+        # Prefer using hashes
         if file1.get("hash") and file2.get("hash"):
             return file1["hash"] == file2["hash"]
-        # 回退到大小和时间戳
+        # Fallback to size and timestamp
         return file1["size"] == file2["size"] and file1["mtime"] == file2["mtime"]
 
     def _human_readable(self, size: int) -> str:
-        """转换为人类可读格式"""
+        """Convert size to human-readable format"""
         for unit in ["B", "KB", "MB", "GB", "TB"]:
             if size < 1024:
                 return f"{size:.1f}{unit}"
@@ -326,12 +327,12 @@ class DiffReporter:
 
 class SpaceManager:
     """
-    磁盘空间管理器
+    Disk Space Manager
 
-    核心功能：
-    1. 分阶段清理（提取后、安装后、打包前）
-    2. 生成文件清单替代保留完整目录
-    3. 生成差异报告满足调试需求
+    Core Features:
+    1. Phased cleanup (after extraction, after installation, before packaging)
+    2. Generate file manifests instead of keeping full directories
+    3. Generate difference reports for debugging needs
     """
 
     def __init__(self, work_dir: Path):
@@ -346,13 +347,13 @@ class SpaceManager:
 
     def cleanup_after_extraction(self, rom_label: str = "both") -> int:
         """
-        提取完成后清理 images 目录
+        Clean up images directory after extraction is complete
 
         Args:
             rom_label: "baserom", "portrom", "both"
 
         Returns:
-            释放的字节数
+            Number of bytes freed
         """
         freed = 0
 
@@ -368,24 +369,26 @@ class SpaceManager:
         return freed
 
     def _cleanup_images(self, rom_dir: Path, label: str) -> int:
-        """清理指定 ROM 的 images 目录"""
+        """Clean up the images directory of a specified ROM"""
         images_dir = rom_dir / "images"
         if not images_dir.exists():
             return 0
 
         freed = self._get_dir_size(images_dir)
 
-        # 保留关键镜像（用于固件修改阶段）
-        preserved = ["boot.img", "vbmeta.img", "dtbo.img", "init_boot.img"]
-        for img_name in preserved:
-            img_path = images_dir / img_name
-            if img_path.exists():
-                # 移动到 repack_images_dir
-                dest = self.work_dir / "repack_images" / img_name
-                shutil.move(str(img_path), str(dest))
-                logger.debug(f"[SpaceManager] Preserved {img_name} for firmware stage")
+        # Preserve critical images (for firmware modification stage and packaging)
+        # Any .img file that is not a logical partition is considered a firmware image to be preserved
+        (self.work_dir / "repack_images").mkdir(parents=True, exist_ok=True)
+        for img_path in images_dir.glob("*.img"):
+            part_name = img_path.stem
+            if part_name not in ANDROID_LOGICAL_PARTITIONS:
+                # Move to repack_images_dir
+                dest = self.work_dir / "repack_images" / img_path.name
+                if not dest.exists():
+                    shutil.move(str(img_path), str(dest))
+                    logger.debug(f"[SpaceManager] Preserved firmware {img_path.name} for later stages")
 
-        # 删除剩余 images
+        # Delete remaining images
         shutil.rmtree(images_dir)
         logger.info(
             f"[SpaceManager] Cleaned {label}/images, freed ~{self._human_readable(freed)}"
@@ -394,7 +397,7 @@ class SpaceManager:
 
     def generate_manifests(self) -> Dict[str, Path]:
         """
-        生成 baserom 和 portrom 的文件清单
+        Generate file manifests for baserom and portrom
 
         Returns:
             {"baserom": Path, "portrom": Path}
@@ -411,14 +414,14 @@ class SpaceManager:
         self, keep_baserom: bool = True, keep_portrom: bool = False
     ) -> int:
         """
-        分区安装完成后清理 extracted 目录
+        Clean up the extracted directory after partition installation is complete
 
         Args:
-            keep_baserom: 是否保留 baserom/extracted（用于深度调试）
-            keep_portrom: 是否保留 portrom/extracted
+            keep_baserom: Whether to keep baserom/extracted (for deep debugging)
+            keep_portrom: Whether to keep portrom/extracted
 
         Returns:
-            释放的字节数
+            Number of bytes freed
         """
         freed = 0
 
@@ -434,12 +437,12 @@ class SpaceManager:
         return freed
 
     def _cleanup_extracted(self, rom_dir: Path, label: str) -> int:
-        """安全清理 extracted 目录"""
+        """Safely clean up the extracted directory"""
         extracted_dir = rom_dir / "extracted"
         if not extracted_dir.exists():
             return 0
 
-        # 确保 manifest 已生成
+        # Ensure manifest has been generated
         manifest_file = self.work_dir / "manifests" / f"{label.lower()}_manifest.json"
         if not manifest_file.exists():
             logger.warning(
@@ -455,11 +458,11 @@ class SpaceManager:
         return freed
 
     def generate_diff_report(self, output_file: Optional[Path] = None) -> Path:
-        """生成详细的差异报告"""
+        """Generate a detailed difference report"""
         return self.diff_reporter.generate_report(output_file)
 
     def get_space_report(self) -> Dict:
-        """获取当前空间使用报告"""
+        """Get current space usage report"""
         report = {
             "baserom": self._get_dir_size(self.baserom_dir),
             "portrom": self._get_dir_size(self.portrom_dir),
@@ -469,7 +472,7 @@ class SpaceManager:
         }
         report["total"] = sum(report.values())
 
-        # 转换为可读格式
+        # Convert to readable format
         readable = {k: self._human_readable(v) for k, v in report.items()}
 
         logger.info("[SpaceManager] Current space usage:")
@@ -479,7 +482,7 @@ class SpaceManager:
         return report
 
     def _get_dir_size(self, path: Path) -> int:
-        """计算目录大小"""
+        """Calculate directory size"""
         if not path.exists():
             return 0
 
@@ -495,7 +498,7 @@ class SpaceManager:
         return total
 
     def _human_readable(self, size: int) -> str:
-        """转换为人类可读格式"""
+        """Convert size to human-readable format"""
         for unit in ["B", "KB", "MB", "GB", "TB"]:
             if size < 1024:
                 return f"{size:.1f}{unit}"
@@ -503,17 +506,17 @@ class SpaceManager:
         return f"{size:.1f}PB"
 
 
-# 便捷函数
+# Utility functions
 def cleanup_and_report(work_dir: Path, stage: str = "after_install") -> Dict:
     """
-    便捷的清理和报告函数
+    Convenient cleanup and reporting function
 
     Args:
-        work_dir: 工作目录
+        work_dir: Working directory
         stage: "after_extraction", "after_install", "after_pack"
 
     Returns:
-        空间使用报告
+        Space usage report
     """
     manager = SpaceManager(work_dir)
 
