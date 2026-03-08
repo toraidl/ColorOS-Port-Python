@@ -1,0 +1,18 @@
+partition_to_port:
+- system
+- system_ext
+- product
+- my_product
+- my_manifest
+possible_super_list:
+- system
+- system_ext
+- product
+- vendor
+- odm
+- my_product
+- my_manifest
+repack_with_ext4: true
+super_extended: false
+pack_with_dsu: false
+pack_method: erofs

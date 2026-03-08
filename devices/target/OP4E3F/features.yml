@@ -1,0 +1,11 @@
+app_feature:
+- name: os.charge.settings.wirelesscharging.power
+  comment: 设置显示无线充电瓦数
+  args: int:30
+- name: oplus.power.wirelesschgwhenwired.support
+- name: com.oplus.battery.wireless.charging.notificate
+- name: os.charge.settings.wirelesschargingcoil.position
+- name: os.charge.settings.wirelesscharge.support
+props_remove:
+- ro.oplus.display.brightness.apollo
+- persist.brightness.apollo

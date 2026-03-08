@@ -1,0 +1,82 @@
+_comment: ColorOS Property Modification Configuration - Function-based design
+version: 2
+rules:
+- name: string_replace
+  enabled: true
+  priority: 10
+  config:
+    mappings:
+    - from: port_device_code
+      to: base_device_code
+    - from: port_product_model
+      to: base_product_model
+    - from: port_product_name
+      to: base_product_name
+    - from: port_product_device
+      to: base_product_device
+    - from: port_vendor_device
+      to: base_vendor_device
+    - from: port_vendor_model
+      to: base_vendor_model
+- name: prop_set
+  enabled: true
+  priority: 20
+  config:
+    properties:
+    - key: persist.sys.timezone
+      value: Asia/Shanghai
+    - key: ro.oplus.radio.global_regionlock.enabled
+      value: 'false'
+    - key: persist.sys.radio.global_regionlock.allcheck
+      value: 'false'
+    - key: ro.oplus.radio.checkservice
+      value: 'false'
+    - key: ro.build.display.id
+      source: target_display_id
+    - key: ro.sf.lcd_density
+      source: base_lcd_density
+      target_partition: my_product
+    - key: persist.oplus.prophook.com.oplus.ai.magicstudio
+      template: MODEL:{device_code},BRAND:{product_model}
+    - key: persist.oplus.prophook.com.oplus.aiunit
+      template: MODEL:{device_code},BRAND:{product_model}
+- name: prop_copy
+  enabled: true
+  priority: 25
+  config:
+    properties:
+    - key: ro.product.first_api_level
+      to_partition: my_manifest
+      comment: Critical for boot - must match baserom
+    - key: ro.vendor.oplus.market.name
+      to_partition: my_manifest
+    - key: ro.vendor.oplus.market.enname
+      to_partition: my_manifest
+      fallback_key: ro.vendor.oplus.market.name
+- name: watermark
+  enabled: true
+  priority: 40
+  config:
+    target_key: ro.build.version.oplusrom.display
+    template: '{value} | Ported By {author}'
+    author: BT
+    skip_if_contains: Ported By
+- name: fingerprint
+  enabled: true
+  priority: 100
+  config:
+    priority_partitions:
+    - my_manifest
+    - my_product
+    - odm
+    - vendor
+    - product
+    - system_ext
+    - system
+my_product:
+  force_keys:
+  - ro.build.version.oplusrom
+  - ro.build.version.oplusrom.display
+  - ro.build.version.oplusrom.confidential
+  - ro.build.version.realmeui
+  import_line: import /mnt/vendor/my_product/etc/bruce/build.prop

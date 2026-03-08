@@ -1,0 +1,24 @@
+replacements:
+- id: ril_fix_sm8350
+  description: RIL Fix for SM8350
+  type: unzip_override
+  source: devices/common/assets/ril_fix_sm8350.zip
+  target_base_dir: build/target/
+  removes:
+  - odm/lib/libmindroid-app.so
+  - odm/lib/libmindroid-framework.so
+  - odm/lib/vendor.oplus.hardware.subsys_radio-V1-ndk_platform.so
+  - odm/lib/vendor.oplus.hardware.subsys-V1-ndk_platform.so
+  - odm/lib64/vendor.oplus.hardware.subsys_radio-V1-ndk_platform.so
+  - odm/lib64/vendor.oplus.hardware.subsys-V1-ndk_platform.so
+- id: aon_fix_sm8350
+  description: AON Fix for SM8350
+  type: unzip_override
+  source: devices/common/assets/aon_fix_sm8350.zip
+  target_base_dir: build/target/
+  depends_on:
+  - ril_fix_sm8350
+  condition:
+    file_exists: devices/common/assets/aon_fix_sm8350.zip
+  removes:
+  - my_product/overlay/aon*.apk
