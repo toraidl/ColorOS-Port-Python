@@ -258,14 +258,25 @@ class Repacker:
         lost_found = src_dir / "lost+found"
         lost_found.mkdir(exist_ok=True)
 
-        # D. Calculate Inode count
+        # D. Calculate Inode count and size overhead
+        # xattrs can take up extra inodes (EA inodes) and space.
         try:
             with open(fs_config, "r") as f:
-                inode_count = sum(1 for _ in f) + 8
-        except:
-            inode_count = 5000  # Fallback
+                # Count files/dirs from fs_config
+                file_count = sum(1 for _ in f)
+            
+            # Use a multiplier for EA inodes (Extended Attributes)
+            # Typically SELinux and other attributes might use extra inodes
+            inode_count = int(file_count * 1.5) + 64
+        except Exception as e:
+            self.logger.warning(f"Failed to estimate inode count: {e}. Using fallback.")
+            inode_count = 10000  # Fallback
 
         # E. First generation
+        # Increase size overhead slightly for xattrs if not already large
+        if size_orig < 104857600:  # < 100MB
+             size = int(size * 1.05) # Add 5% extra buffer
+        
         self._make_ext4_image(
             part_name,
             src_dir,

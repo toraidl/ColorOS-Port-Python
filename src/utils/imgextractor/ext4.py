@@ -611,8 +611,7 @@ class Inode:
                             xattr_name=xattr_name
                         ))
 
-                # TODO Use xattr_entry.e_value_size or xattr_inode.inode.i_size?
-                xattr_value = xattr_inode.open_read().read()
+                xattr_value = xattr_inode.open_read().read(xattr_entry.e_value_size)
             else:
                 # internal xattr
                 xattr_value = raw_data[
@@ -828,16 +827,20 @@ class Inode:
             inline_data = self.volume.read(inline_data_offset, inline_data_length)
             xattrs_header = ext4_xattr_ibody_header.from_buffer_copy(inline_data)
 
-            # TODO Find way to detect inline xattrs without checking the h_magic field to enable error detection with the h_magic field.
             if force_inline or xattrs_header.h_magic == 0xEA020000:
                 offset = 4 * ((ctypes.sizeof(
                     ext4_xattr_ibody_header) + 3) // 4)  # The ext4_xattr_entry following the header is aligned on a 4-byte boundary
-            try:    
-                for xattr_name, xattr_value in self._parse_xattrs(inline_data[offset:], 0,
-                                                                  prefix_override=prefix_override):
-                    yield (xattr_name, xattr_value)
-            except:
-                pass
+                try:
+                    for xattr_name, xattr_value in self._parse_xattrs(inline_data[offset:], 0,
+                                                                      prefix_override=prefix_override):
+                        yield (xattr_name, xattr_value)
+                except:
+                    pass
+            elif xattrs_header.h_magic != 0:
+                 raise MagicError("Invalid inline xattr magic in inode {inode:d}: 0x{magic:08X} (expected 0xEA020000)".format(
+                     inode=self.inode_idx,
+                     magic=xattrs_header.h_magic
+                 ))
         # xattr block(s)
         if check_block and self.inode.i_file_acl != 0:
             xattrs_block_start = self.inode.i_file_acl * self.volume.block_size
