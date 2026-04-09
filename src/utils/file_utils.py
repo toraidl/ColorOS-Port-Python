@@ -2,10 +2,70 @@ import logging
 import shutil
 import subprocess
 import os
+import hashlib
 from pathlib import Path
 from typing import Union, Optional
 
 logger = logging.getLogger(__name__)
+
+def calculate_file_hash(file_path: Union[str, Path], hash_algo="sha256") -> Optional[str]:
+    """
+    Calculate the hash of a single file.
+    """
+    path = Path(file_path)
+    if not path.exists() or not path.is_file():
+        return None
+    
+    h = hashlib.new(hash_algo)
+    with open(path, "rb") as f:
+        # Read in 64KB chunks
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def calculate_dir_hash(dir_path: Union[str, Path], hash_algo="sha256") -> Optional[str]:
+    """
+    Calculate a hash representing a directory's state based on metadata of all its files.
+    This includes relative path, size, and modification time for performance.
+    """
+    path = Path(dir_path)
+    if not path.exists() or not path.is_dir():
+        return None
+
+    h = hashlib.new(hash_algo)
+    # Sort paths for deterministic hash
+    try:
+        # Using a simple recursive walk for consistent metadata-based hashing
+        for root, dirs, files in os.walk(path):
+            # Sort for determinism
+            dirs.sort()
+            files.sort()
+            
+            for name in files:
+                file_path = Path(root) / name
+                rel_path = file_path.relative_to(path)
+                
+                try:
+                    stat = file_path.stat()
+                    # Hash path, size, and mtime
+                    h.update(str(rel_path).encode())
+                    h.update(str(stat.st_size).encode())
+                    h.update(str(stat.st_mtime).encode())
+                except (OSError, FileNotFoundError):
+                    # Skip files that disappeared during walk
+                    continue
+            
+            for name in dirs:
+                dir_path_sub = Path(root) / name
+                rel_path = dir_path_sub.relative_to(path)
+                h.update(str(rel_path).encode())
+                h.update(b"dir")
+                
+    except Exception as e:
+        logger.error(f"Error calculating directory hash for {dir_path}: {e}")
+        return None
+
+    return h.hexdigest()
 
 def clean_work_dir(work_dir: Path) -> None:
     """Clean and recreate working directory."""

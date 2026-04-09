@@ -1,6 +1,7 @@
 import shutil
 import logging
 import concurrent.futures
+import json
 from pathlib import Path
 from src.core.config import Config
 from src.core.rom import RomPackage
@@ -53,11 +54,38 @@ class Context:
         self.target_config_dir = self.target_dir / "config"
         self.repack_images_dir = self.work_dir / "repack_images"
 
+        self._hash_state_file = self.work_dir / ".partition_hashes.json"
+        self._partition_hashes = {}
+
         # Initialize tools
         self.bin_root = Path("bin").resolve()
         self.tools = ToolManager(self.bin_root)
 
         self._init_workspace()
+
+    @property
+    def partition_hashes(self):
+        """Current partition hashes (loaded once from disk)"""
+        if not self._partition_hashes and self._hash_state_file.exists():
+            try:
+                with open(self._hash_state_file, "r") as f:
+                    self._partition_hashes = json.load(f)
+            except Exception as e:
+                self.logger.warning(f"Failed to load partition hashes: {e}")
+                self._partition_hashes = {}
+        return self._partition_hashes
+
+    def save_partition_hashes(self, hashes: dict):
+        """Save updated partition hashes to state file"""
+        # Load existing hashes first
+        current = self.partition_hashes
+        current.update(hashes)
+        try:
+            with open(self._hash_state_file, "w") as f:
+                json.dump(current, f, indent=4)
+            self._partition_hashes = current
+        except Exception as e:
+            self.logger.error(f"Failed to save partition hashes: {e}")
 
     # === Target properties (derived from base/port ROMs) ===
 
@@ -101,6 +129,12 @@ class Context:
     @property
     def is_ab_device(self):
         return self.baserom.is_ab_device
+
+    @property
+    def is_port_eu_rom(self):
+        from src.core.rom import RomType
+
+        return self.portrom.rom_type == RomType.XIAOMI_EU
 
     def fetch_rom_info(self):
         """Fetch and log ROM properties (now delegated to RomPackage properties)"""

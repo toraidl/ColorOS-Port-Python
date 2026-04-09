@@ -11,6 +11,7 @@ from pathlib import Path
 from src.utils.shell import ShellRunner
 from src.utils.fspatch import patch_fs_config
 from src.utils.contextpatch import ContextPatcher
+from src.utils.file_utils import calculate_dir_hash, calculate_file_hash
 from src.core.rom import ANDROID_LOGICAL_PARTITIONS
 from datetime import datetime
 
@@ -38,6 +39,33 @@ class Repacker:
         self.images_out = self.product_out / "IMAGES"
         self.meta_out = self.product_out / "META"
         self.ota_tools_dir = Path("otatools").resolve()
+
+    def _calculate_partition_hash(self, part_name):
+        """
+        Calculate a combined hash for partition source and metadata.
+        """
+        src_dir = self.ctx.target_dir / part_name
+        fs_config = self.ctx.target_config_dir / f"{part_name}_fs_config"
+        file_contexts = self.ctx.target_config_dir / f"{part_name}_file_contexts"
+
+        # 1. Directory hash (metadata-based)
+        dir_hash = calculate_dir_hash(src_dir)
+        if not dir_hash:
+            return None
+
+        # 2. Config files hash (content-based)
+        h = hashlib.sha256()
+        h.update(dir_hash.encode())
+
+        for cfg in [fs_config, file_contexts]:
+            if cfg.exists():
+                cfg_hash = calculate_file_hash(cfg)
+                if cfg_hash:
+                    h.update(cfg_hash.encode())
+            else:
+                h.update(b"missing")
+
+        return h.hexdigest()
 
     def pack_all(self, pack_type="EROFS", is_rw=False):
         """
