@@ -86,23 +86,41 @@ class Repacker:
             self.logger.warning("No partitions found to pack")
             return
 
+        # Incremental check: Identify partitions that actually need repacking
+        to_pack = []
+        new_hashes = {}
+        cached_hashes = self.ctx.partition_hashes
+
+        for part_name in partitions:
+            img_output = self.ctx.target_dir / f"{part_name}.img"
+            current_hash = self._calculate_partition_hash(part_name)
+            
+            if img_output.exists() and current_hash == cached_hashes.get(part_name):
+                self.logger.info(f"[Packer] [Skipped] {part_name} - No changes detected.")
+                continue
+            
+            to_pack.append(part_name)
+            if current_hash:
+                new_hashes[part_name] = current_hash
+
+        if not to_pack:
+            self.logger.info("[Packer] All partitions are up-to-date. Skipping repack stage.")
+            return
+
         # Dynamic worker count based on CPU cores and partition count
-        # EROFS/EXT4 packing is CPU and I/O intensive, use fewer workers
         cpu_count = os.cpu_count() or 4
-        partition_count = len(partitions)
+        partition_count = len(to_pack)
 
         # For packing tasks, use fewer workers to avoid I/O contention
-        # Large partitions benefit from dedicated resources
         max_workers = min(max(cpu_count // 4 + 1, 2), partition_count, 4)
 
         self.logger.info(
-            f"[Packer] Using {max_workers} workers for packing (CPU: {cpu_count}, Partitions: {partition_count})"
+            f"[Packer] Using {max_workers} workers for packing {partition_count} partitions (CPU: {cpu_count})"
         )
 
         # Sort partitions by estimated size (larger first) for better load balancing
-        # This helps distribute large partitions evenly across workers
         partition_sizes = []
-        for part_name in partitions:
+        for part_name in to_pack:
             src_dir = self.ctx.target_dir / part_name
             try:
                 size = sum(f.stat().st_size for f in src_dir.rglob("*") if f.is_file())
@@ -114,15 +132,12 @@ class Repacker:
         partition_sizes.sort(key=lambda x: x[1], reverse=True)
         sorted_partitions = [p[0] for p in partition_sizes]
 
-        self.logger.debug(f"[Packer] Partition order (by size): {sorted_partitions}")
-
         # Use ThreadPoolExecutor for parallel packing with progress tracking
         completed = 0
         total = len(sorted_partitions)
         failed_partitions = []
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks with partition names for better error reporting
             future_to_part = {
                 executor.submit(
                     self._pack_partition, part_name, pack_type, is_rw
@@ -135,6 +150,10 @@ class Repacker:
                 try:
                     future.result()
                     completed += 1
+                    # Update hash only on success
+                    if part_name in new_hashes:
+                        self.ctx.save_partition_hashes({part_name: new_hashes[part_name]})
+                    
                     self.logger.info(
                         f"[Packer] Progress: {completed}/{total} partitions packed ({part_name})"
                     )
