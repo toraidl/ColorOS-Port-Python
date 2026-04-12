@@ -1,2 +1,4 @@
+# Device-specific property overrides
+# These rules are merged on top of common/props.yml rules
 version: '1.0'
 rules: []

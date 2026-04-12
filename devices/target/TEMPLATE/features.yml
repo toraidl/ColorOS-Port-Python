@@ -1,1 +1,5 @@
-{}
+# Device-specific feature overrides
+# These entries are merged on top of common/features.yml
+# Available sections: oplus_feature, app_feature, permission_oplus_feature,
+#                     permission_feature, features_remove, features_remove_force,
+#                     features_remove_conditional, build_props, props_remove

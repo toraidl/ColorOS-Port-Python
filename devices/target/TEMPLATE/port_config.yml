@@ -1,18 +1,24 @@
-partition_to_port:
-- system
-- system_ext
-- product
-- my_product
-- my_manifest
-possible_super_list:
-- system
-- system_ext
-- product
-- vendor
-- odm
-- my_product
-- my_manifest
-repack_with_ext4: true
-super_extended: false
-pack_with_dsu: false
-pack_method: erofs
+# Override partitions to extract from port ROM (overrides common config)
+# partition_to_port:
+# - system
+# - system_ext
+# - product
+# - my_product
+# - my_manifest
+
+# Override possible super sub-partitions (overrides common config)
+# possible_super_list:
+# - system
+# - system_ext
+# - product
+# - vendor
+# - odm
+# - my_product
+# - my_manifest
+
+# Device-specific overrides
+# repack_with_ext4: false
+# super_extended: false
+# pack_with_dsu: false
+# pack_method: stock
+# enable_ksu: true

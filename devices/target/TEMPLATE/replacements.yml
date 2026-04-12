@@ -1,1 +1,5 @@
+# Device-specific file replacement overrides
+# These entries are merged on top of common/replacements.yml
+# Available types: unzip_override, remove_files, copy_file_internal,
+#                  copy_files_from_stock, conditional_copy, overlay_sync
 replacements: []
