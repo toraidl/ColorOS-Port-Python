@@ -24,6 +24,9 @@ class Config:
         self.vendor_dlkm_enabled = config_data.get("vendor_dlkm_enabled", False)
         self.enable_ksu = config_data.get("enable_ksu", False)
         self.ksu_type = config_data.get("ksu_type", "gki")
+        self.ksu_repo_owner = config_data.get("ksu_repo_owner", "tiann")
+        self.ksu_repo_name = config_data.get("ksu_repo_name", "KernelSU")
+        self.remove_data_encryption = config_data.get("remove_data_encryption", False)
         self.disable_vbmeta = config_data.get("disable_vbmeta", False)
         self.assets_base_url = config_data.get(
             "assets_base_url",

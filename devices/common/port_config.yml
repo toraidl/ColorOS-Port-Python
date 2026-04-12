@@ -1,44 +1,66 @@
+# Partitions to extract from port ROM
 partition_to_port:
 - system
 - system_ext
 - product
 - my_product
 - my_engineering
-- my_company
+- my_stock
+- my_heytap
 - my_carrier
 - my_region
-- my_heytap
-- my_stock
-- my_preload
 - my_bigball
 - my_manifest
+- my_company
+- my_preload
+
+# All possible super sub-partitions
 possible_super_list:
 - system
 - system_ext
-- product
 - vendor
-- odm
-- system_dlkm
-- vendor_dlkm
+- product
 - my_product
+- odm
 - my_engineering
-- my_company
+- vendor_dlkm
+- system_dlkm
+- my_stock
+- my_heytap
 - my_carrier
 - my_region
-- my_heytap
-- my_stock
-- my_preload
 - my_bigball
 - my_manifest
-repack_with_ext4: true
+- my_company
+- my_preload
+
+# Repack filesystem: false = EROFS, true = EXT4
+repack_with_ext4: false
+
+# Remove data encryption in fstab
+remove_data_encryption: false
+
+# Extend super partition for flashing
 super_extended: false
+
+# Pack with DSU support
 pack_with_dsu: false
-pack_method: erofs
-ddr_type: ddr4
+
+# Pack method: stock (OTA) or super (fastboot)
+pack_method: stock
+
+# DDR type (optional, auto-detected if omitted)
+# ddr_type: ddr5
+
+# Partitions whose patched images can be reused across runs
 reusabe_partition_list:
-- odm
-- vendor
-- system_dlkm
-- vendor_dlkm
-system_dlkm_enabled: true
-vendor_dlkm_enabled: true
+- my_bigball
+- my_heytap
+- my_stock
+- my_region
+- product
+
+# KernelSU support
+enable_ksu: true
+# ksu_repo_owner: tiann
+# ksu_repo_name: KernelSU
