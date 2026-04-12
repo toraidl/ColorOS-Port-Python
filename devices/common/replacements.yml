@@ -246,3 +246,128 @@ replacements:
   source: devices/common/super_computing
   target: my_product/etc/string_super_computing
   condition_target_exists: false
+- id: face_unlock_fix_common
+  description: Face unlock fix for SM8250/SM8350 devices on port>=15
+  type: unzip_override
+  source: devices/common/assets/face_unlock_fix_common.zip
+  target_base_dir: build/target/
+  condition:
+    and:
+    - or:
+      - chipset: SM8250
+      - chipset: SM8350
+    - port_android_version:
+        min: 15
+- id: hdr_fix
+  description: HDR fix for base Android 14 and below
+  type: unzip_override
+  source: devices/common/assets/hdr_fix.zip
+  target_base_dir: build/target/
+  condition:
+    base_android_version:
+      max: 14
+- id: wallpaper_fix
+  description: Wallpaper fix for non-CN, non-OOS ports below Android 16
+  type: unzip_override
+  source: devices/common/assets/wallpaper.zip
+  target_base_dir: build/target/
+  condition:
+    and:
+    - not:
+        region: CN
+    - not:
+        base_rom_type: OxygenOS
+    - port_android_version:
+        max: 15
+- id: realme_gesture_fix
+  description: Realme gesture fix for non-Realme devices on port<16
+  type: unzip_override
+  source: devices/common/assets/realme_gesture.zip
+  target_base_dir: build/target/
+  condition:
+    and:
+    - not:
+        base_brand: realme
+    - port_android_version:
+        max: 15
+- id: gt_mode_overlay
+  description: GT Mode overlay for non-Realme devices on port!=16
+  type: unzip_override
+  source: devices/common/assets/GTMode/overlay
+  target_base_dir: build/target/
+  condition:
+    and:
+    - not:
+        base_brand: realme
+    - not:
+        port_android_version:
+          min: 16
+          max: 16
+- id: debloat_apps
+  description: Remove bloatware apps (del-app directories, HeartRateDetect, Browser)
+  type: remove_files
+  files:
+  - my_product/del-app
+  - system/system/del-app
+  - my_product/app/HeartRateDetect
+  - my_product/priv-app/HeartRateDetect
+  - product/app/Browser
+  - product/priv-app/Browser
+  - system/system/app/Browser
+  - system/system/priv-app/Browser
+- id: remove_verity_keys
+  description: Remove verity_key files from system, vendor, and product
+  type: remove_files
+  files:
+  - system/system/verity_key
+  - vendor/verity_key
+  - product/verity_key
+- id: remove_recovery_from_boot
+  description: Remove recovery-from-boot.p files
+  type: remove_files
+  files:
+  - system/system/recovery-from-boot.p
+  - vendor/recovery-from-boot.p
+- id: remove_auto_install
+  description: Remove auto-install directory from product
+  type: remove_files
+  files:
+  - product/etc/auto-install
+- id: copy_vulkan_layer
+  description: Copy vulkanLayer from baserom
+  type: copy_files_from_stock
+  source: system/system/vulkanLayer
+  target_dir: system/system/vulkanLayer
+- id: copy_gpu_drivers
+  description: Copy gpudrivers from baserom
+  type: copy_files_from_stock
+  source: vendor/gpudrivers
+  target_dir: vendor/gpudrivers
+- id: copy_product_overlay_framework_jars
+  description: Copy product_overlay framework jars from baserom
+  type: copy_files_from_stock
+  source: my_product/overlay/framework
+  target_dir: my_product/overlay/framework
+- id: camera_optimize_fix_sm8250
+  description: Remove sys_camera_optimize_config.xml for SM8250 camera optimization
+  type: remove_files
+  condition:
+    chipset: SM8250
+  files:
+  - my_product/etc/sys_camera_optimize_config.xml
+- id: charger_v6_conditional
+  description: Charger V6 update conditional on charger service existence in port
+  type: unzip_override
+  source: devices/common/assets/charger-v6-update.zip
+  target_base_dir: build/target/
+  condition:
+    and:
+    - file_exists_in_port: odm/bin/hw/vendor.oplus.hardware.charger-V3-service
+    - android_version:
+        min: 14
+        max: 15
+  removes:
+  - odm/bin/hw/vendor.oplus.hardware.charger-V3-service
+  - odm/etc/init/vendor.oplus.hardware.charger-V3-service.rc
+  - odm/lib/vendor.oplus.hardware.charger-V3-ndk_platform.so
+  - odm/lib64/vendor.oplus.hardware.charger-V3-ndk_platform.so
