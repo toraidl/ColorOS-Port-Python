@@ -61,6 +61,193 @@ rules:
     template: '{value} | Ported By {author}'
     author: BT
     skip_if_contains: Ported By
+- name: prop_remove
+  enabled: true
+  priority: 15
+  config:
+    comment: Remove props that conflict with base hardware or cause issues
+    properties:
+    - key: persist.oplus.software.audio.right_volume_key
+      comment: Right volume key audio mapping - hardware specific
+    - key: persist.oplus.software.alertslider.location
+      comment: Alert slider location - hardware specific
+    - key: ro.oplus.resolution
+      comment: Display resolution - hardware specific
+    - key: ro.oplus.display.wm_size_resolution_switch.support
+      comment: Resolution switch support - hardware specific
+    - key: ro.density.screenzoom
+      comment: Screen zoom density - hardware specific
+    - key: ro.oplus.density.qhd_default
+      comment: QHD default density - hardware specific
+    - key: ro.oplus.density.fhd_default
+      comment: FHD default density - hardware specific
+    - key: ro.oplus.key.actionbutton
+      comment: Action button key mapping - hardware specific
+    - key: ro.oplus.audio.support.foldingmode
+      comment: Folding mode audio - foldable specific
+    - key: ro.config.fold_disp
+      comment: Foldable display config - foldable specific
+    - key: persist.oplus.display.fold.support
+      comment: Fold display support - foldable specific
+    - key: ro.oplus.haptic
+      comment: Haptic engine type - hardware specific
+    - key: ro.vendor.mtk
+      comment: MediaTek SoC indicator
+    - key: ro.oplus.mtk
+      comment: MediaTek SoC indicator (OPLUS)
+    - key: ro.product.oplus.cpuinfo
+      comment: CPU info override
+    - key: ro.product.oplus.device
+      comment: Device identity override
+    - key: persist.vendor.display.pxlw.iris_feature
+      comment: Iris display feature - hardware specific
+    - key: ro.oplus.camera.quickshare.support
+      comment: QuickShare camera support - OOS only, force remove
+      force: true
+    wildcard_patterns:
+    - pattern: ro.oplus.audio.*
+      comment: Remove all oplus audio props to prevent audio conflicts
+- name: prop_add
+  enabled: true
+  priority: 30
+  config:
+    comment: Add props to specific partition files
+    targets:
+    - file: vendor/default.prop
+      properties:
+      - key: ro.surface_flinger.game_default_frame_rate_override
+        value: '120'
+        comment: Game frame rate override for 120Hz
+    - file: system/build.prop
+      properties:
+      - key: persist.adb.notify
+        value: '0'
+        comment: Disable ADB notification
+      - key: persist.sys.usb.config
+        value: mtp,adb
+        comment: Default USB config to MTP+ADB
+      - key: persist.sys.disable_rescue
+        value: 'true'
+        comment: Disable rescue party
+      - key: ro.build.version.oplusrom
+        source: ota_version
+        comment: OPLUS ROM version from OTA
+      - key: oplus_hex_nv_id
+        source: oplus_hex_nv_id
+        comment: OPLUS hex NV identifier
+    - file: null
+      comment: Props added to all partition build.props
+      properties:
+      - key: ro.oplus.game.camera.support_1_0
+        value: 'true'
+        comment: Game camera support
+      - key: ro.oplus.audio.quiet_start
+        value: 'true'
+        comment: Quiet audio start
+      - key: ro.oplus.ridermode.support_feature_switch
+        value: '11'
+        comment: Rider mode feature switch
+      - key: ro.oplus.display.sell_mode.max_normal_nit
+        value: '800'
+        comment: Max normal brightness nit for sell mode
+    conditional:
+    - key: persist.sys.oplus.anim_level
+      value: '2'
+      condition:
+        soc: SM8250,SM8350
+      fallback_value: '1'
+      comment: Animation level 2 for Snapdragon 865/888, 1 for others
+    - key: ro.oplus.display.brightness.min_settings.rm
+      value: '1,1,25,4.0,0'
+      condition:
+        region: CN
+      comment: Brightness min settings for China region only
+- name: build_props_bruce
+  enabled: true
+  priority: 50
+  config:
+    comment: Props written to bruce/build.prop (my_product partition)
+    target_file: bruce/build.prop
+    properties:
+    - key: persist.lowbrightnessthreshold
+      value: '0'
+      comment: Disable low brightness threshold
+    - key: persist.sys.renderengine.maxLuminance
+      value: '500'
+      comment: Render engine max luminance
+    - key: ro.oplus.display.peak.brightness.duration_time
+      value: '15'
+      comment: Peak brightness duration time in seconds
+    - key: ro.oplus.display.peak.brightness.effect_interval_time
+      value: '1800000'
+      comment: Peak brightness effect interval in ms (30 min)
+    - key: ro.oplus.display.peak.brightness.effect_times_every_day
+      value: '2'
+      comment: Peak brightness effect times per day
+    - key: ro.display.brightness.thread.priority
+      value: 'true'
+      comment: Enable brightness thread priority
+    - key: ro.oplus.audio.speaker_clean
+      value: 'true'
+      comment: Enable speaker cleaning
+    - key: ro.vendor.oplus.radio.use_nitz_name
+      value: 'true'
+      comment: Use NITZ for network name
+    - key: persist.oplus.prophook.com.oplus.ai.magicstudio
+      template: MODEL:{MODEL_MAGIC},BRAND:{brand}
+      comment: AI Magic Studio model hook
+    - key: persist.oplus.prophook.com.oplus.aiunit
+      template: MODEL:{MODEL_AIUNIT},BRAND:{brand}
+      comment: AI Unit model hook
+    conditional:
+    - key: persist.oplus.prophook.com.coloros.smartsidebar
+      value: '"BRAND:realme"'
+      condition:
+        brand: realme
+      comment: Smart sidebar brand hook for realme devices only
+- name: conditional_props
+  enabled: true
+  priority: 35
+  config:
+    comment: Props that depend on ROM version, brand, or other runtime conditions
+    rules:
+    - key: ro.build.version.realmeui
+      template: ro.build.version.realmeui={value}
+      condition:
+        description: Set based on port_android_version
+        logic: port_android_version >= 15 -> empty (ColorOS), port_android_version < 15 -> derive from version
+      comment: RealmeUI version derived from port Android version
+    - key: brand_fix_coloros_global
+      type: string_replace
+      find: OnePlus
+      replace: OPPO
+      condition:
+        rom_type: ColorOS_Global
+      comment: Replace OnePlus brand with OPPO for ColorOS Global ROMs
+    - key: ro.oplus.image.system_ext.brand
+      type: prop_set
+      condition:
+        rom_type: '!ColorOS_Global'
+      value_source: base_brand
+      comment: Fix vendor brand for non-ColorOS Global ROMs
+    conditional_removes:
+    - key: ro.lcd.display.screen
+      condition:
+        base_version_lt: 15
+        port_version_gt: 15
+      comment: Remove if base<15 and port>15
+    - key: ro.display.brightness
+      condition:
+        description: Conditional removal based on display compatibility
+      comment: Remove brightness prop conditionally
+    - key: ro.oplus.lcd.display
+      condition:
+        description: Conditional removal based on display compatibility
+      comment: Remove LCD display prop conditionally
+    device_specific:
+    - key: persist.sys.oplus.wlan.atpc.qcom_use_iw
+      device: OnePlus8T
+      comment: ATPC WLAN config specific to OnePlus 8T
 - name: fingerprint
   enabled: true
   priority: 100
