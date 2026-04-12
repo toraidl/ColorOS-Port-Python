@@ -19,3 +19,13 @@ replacements:
     file_exists: devices/common/assets/aon_fix_sm8250.zip
   removes:
   - my_product/overlay/aon*.apk
+- id: face_unlock_fix_sm8250
+  description: Face unlock fix for SM8250 on port>=15
+  type: unzip_override
+  source: devices/chipset/OPSM8250/assets/face_unlock_fix.zip
+  target_base_dir: build/target/
+  condition:
+    and:
+    - port_android_version:
+        min: 15
+    - file_exists: devices/chipset/OPSM8250/assets/face_unlock_fix.zip
