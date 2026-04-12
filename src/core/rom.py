@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import tarfile
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -110,12 +111,25 @@ class RomPackage:
             self.images_dir = self.path / "images"  # Adapting to AOSP structure
             if not self.images_dir.exists():
                 self.images_dir = self.path  # Compatible if img is in root
+            self.extracted_dir = self.work_dir / "extracted"
+            self.config_dir = self.extracted_dir / "config"
             return
 
         # Simple Zip detection logic
         if zipfile.is_zipfile(self.path):
             with zipfile.ZipFile(self.path, "r") as z:
                 namelist = z.namelist()
+                self.logger.debug(
+                    f"[{self.label}] ZIP contents (first 20): {namelist[:20]}"
+                )
+                self.logger.debug(f"[{self.label}] Filename: {self.path.name}")
+                self.logger.debug(
+                    f"[{self.label}] Has xiaomi.eu: {'xiaomi.eu' in self.path.name.lower()}"
+                )
+                self.logger.debug(
+                    f"[{self.label}] Has images/super.img: {any('images/super.img' in x for x in namelist)}"
+                )
+
                 if "payload.bin" in namelist:
                     self.rom_type = RomType.PAYLOAD
                 elif any(x.endswith("new.dat.br") for x in namelist):
@@ -138,9 +152,11 @@ class RomPackage:
         # === Check if source has changed and should extract new images ===
         source_hash_path = self.work_dir / "source_file.hash"
         source_changed = True
-        current_source_hash = self._compute_file_hash(self.path)
+        current_source_hash = (
+            self._compute_file_hash(self.path) if self.path.is_file() else None
+        )
 
-        if source_hash_path.exists():
+        if current_source_hash and source_hash_path.exists():
             try:
                 with open(source_hash_path, "r") as f:
                     saved_hash = f.read().strip()
@@ -150,7 +166,7 @@ class RomPackage:
                     f"[{self.label}] Could not read hash file, re-extracting."
                 )
                 source_changed = True
-        else:
+        elif current_source_hash:
             source_changed = True
 
         if source_changed:
@@ -187,7 +203,7 @@ class RomPackage:
         self._batch_extract_files(partitions or ANDROID_LOGICAL_PARTITIONS)
 
         # Save source hash after successful extraction
-        if source_changed:
+        if source_changed and current_source_hash:
             try:
                 with open(source_hash_path, "w") as f:
                     f.write(current_source_hash)
@@ -217,6 +233,9 @@ class RomPackage:
         self.logger.info(
             f"[{self.label}] Processing file extraction for logical partitions..."
         )
+        if not candidates:
+            self.logger.info(f"[{self.label}] No partitions provided, skipping extraction")
+            return
 
         # Dynamic worker count based on CPU cores and partition count
         cpu_count = os.cpu_count() or 4
